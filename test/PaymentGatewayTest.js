@@ -90,6 +90,26 @@ describe("TheGameHub", function () {
     expect(await hub.buyEasyGameMaster({value:parseEther(String(price))}))
 
   });
+  
+  it("attempt to buy medium gamemaster", async () => {
+    const newPrice = 1;
+    await hub.setMediumGameMasterPrice(newPrice)
+
+    const price = await hub.getMediumGameMasterPrice()
+
+    expect(await hub.buyMediumGameMaster({value:parseEther(String(price))}))
+
+  });
+  
+  it("attempt to buy hard gamemaster", async () => {
+    const newPrice = 1;
+    await hub.setHardGameMasterPrice(newPrice)
+
+    const price = await hub.getHardGameMasterPrice()
+
+    expect(await hub.buyHardGameMaster({value:parseEther(String(price))}))
+
+  });
 
 
 });
