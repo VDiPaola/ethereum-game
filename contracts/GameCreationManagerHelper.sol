@@ -47,9 +47,9 @@ library GameCreationManagerHelper{
     }
 
     /* @dev check if address is in array */
-    function isVerified(address _address, address[] memory _verifiedUsers) internal pure returns(bool success){
-        for(uint i = 0; i < _verifiedUsers.length; i++){
-            if(_verifiedUsers[i] == _address){return true;}
+    function inArray(address _address, address[] memory _users) internal pure returns(bool success){
+        for(uint i = 0; i < _users.length; i++){
+            if(_users[i] == _address){return true;}
         }
         return false;
     }
@@ -61,10 +61,6 @@ library GameCreationManagerHelper{
             if(_games[i].difficulty == _difficulty){counter++;}
         }
         return counter;
-    }
-
-    function endOfGame(address _winner) internal returns(bool success){
-
     }
 
     /* @dev get round number by strategy */
