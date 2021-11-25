@@ -2,14 +2,22 @@
 pragma solidity ^0.8.5;
 
 import './GameCreationManagerHelper.sol';
+import "@openzeppelin/contracts/utils/Counters.sol";
 
 
 contract GameCreationManager{
+    using Counters for Counters.Counter;
+    using GameCreationManagerHelper for GameCreationManagerHelper.Game;
+
     GameCreationManagerHelper.Game[] games;
 
     uint256 maxEasyGames = 8; //amount of easy games at once
     uint256 maxMedGames = 5; //amount of medium games at once
     uint256 maxHardGames = 2; //amount of hard games at once
+
+    Counters.Counter curGameId;
+
+    event AddFunds(uint gameId, address funder, uint amount, uint timestamp);
 
     //get game max
     function getGames(uint256 _difficulty) public view returns(uint256 amt){
@@ -82,6 +90,7 @@ contract GameCreationManager{
             votinglengthHours,
             0, //current round
             block.timestamp,
+            0, //prize pool
             difficulty,
             false, //isVotingRound
             official,
@@ -107,11 +116,12 @@ contract GameCreationManager{
     GameCreationManagerHelper.PrizeDistribution prizeDistributionStrategy)
     internal {
         require(difficulty < 4 && difficulty > 0, 'invalid difficulty');
+        curGameId.increment();
         GameCreationManagerHelper.Game memory newGame = GameCreationManagerHelper.Game(
             title,
             roundStrategy,
             prizeDistributionStrategy,
-            games.length, //id
+            curGameId.current(),
             numberOfWinners,
             maxPlayers,
             minPlayers,
@@ -120,6 +130,7 @@ contract GameCreationManager{
             votinglengthHours,
             0, //current round
             block.timestamp,
+            0, //prize pool
             difficulty,
             false, //isVotingRound
             official,
@@ -131,39 +142,42 @@ contract GameCreationManager{
     }
 
 
-    // change round of game
-    function nextRound(uint256 id) public returns(bool success){
-        games[id].currentRound++;
-        
-        if(games[id].currentRound == games[id].numberOfRounds){
-            //endGame
-            return true;
-        }
-        
-        games[id].isVotingRound = false;
-        return true;
+    // go to next round of game
+    function _nextRound(uint256 _gameId) internal {
+        GameCreationManagerHelper.Game storage game = GameCreationManagerHelper.getGame(_gameId, games);
+        game.nextRound();
     }
-
-    //singular game prompt
-    //all game propmt
 
     //add player to game
     function _addPlayer(address _addr, uint256 _gameId) internal{
-        bool alreadyExists = GameCreationManagerHelper.inArray(_addr, games[_gameId].players);
+        GameCreationManagerHelper.Game storage game = GameCreationManagerHelper.getGame(_gameId, games);
+        bool alreadyExists = GameCreationManagerHelper.inArray(_addr, game.players);
         if (!alreadyExists) {
-            games[_gameId].players.push(_addr);
+            game.players.push(_addr);
         }
     }
     //add player to game, fails if player already exists
     function _addPlayerSafe(address _addr, uint256 _gameId) internal{
-        bool alreadyExists = GameCreationManagerHelper.inArray(_addr, games[_gameId].players);
+        GameCreationManagerHelper.Game storage game = GameCreationManagerHelper.getGame(_gameId, games);
+        bool alreadyExists = GameCreationManagerHelper.inArray(_addr, game.players);
         require(!alreadyExists, "_addPlayerSafe: address already exists in this game");
-        games[_gameId].players.push(_addr);
+        game.players.push(_addr);
+    }
+
+    //adds to prize pool for game
+    function _addFunds(uint256 _gameId) internal {
+        require(msg.value >= 1, "_addFunds: minimum to add is $1");
+        GameCreationManagerHelper.Game storage game = GameCreationManagerHelper.getGame(_gameId, games);
+        game.prizePool += msg.value;
+        emit AddFunds(_gameId, msg.sender, msg.value, block.timestamp);
     }
 
     /**
+        -single create game function that gets passed the individual arguments from other functions
         -unofficial games require list of challenges before hand, top suggestion gets added on creation
-
+        -refund function
+        -singular game prompt
+        -all game propmt
      */
 
 }

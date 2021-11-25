@@ -30,6 +30,7 @@ library GameCreationManagerHelper{
         uint votingLengthHours;
         uint currentRound;
         uint date;
+        uint prizePool;
         uint8 difficulty;
         bool isVotingRound;
         bool official;
@@ -39,10 +40,27 @@ library GameCreationManagerHelper{
     }
     
     /* @dev Checks title exists in game array */
-    function checkTitle(string memory _string, Game[] memory _games) internal pure returns(bool exists){
+    // function checkTitle(string memory _string, Game[] memory _games) internal pure returns(bool exists){
+    //     for(uint i = 0; i < _games.length; i++){
+    //         if(keccak256(abi.encodePacked(_games[i].title)) == keccak256(abi.encodePacked(_string))){return true;}
+    //     }
+    //     return false;
+    // }
+
+
+    /* @dev get game from id */
+    function getGame(uint _gameId, Game[] storage _games) internal view returns(Game storage game){
         for(uint i = 0; i < _games.length; i++){
-            if(keccak256(abi.encodePacked(_games[i].title)) == keccak256(abi.encodePacked(_string))){return true;}
+            if (_games[i].id == _gameId) {
+                return _games[i];
+            }
         }
+        revert("getGame: game with that id doesnt exist");
+    }
+
+    /* @dev Checks string matches */
+    function equals(string memory _string1, string memory _string2) internal pure returns(bool equal){
+        if(keccak256(abi.encodePacked(_string1)) == keccak256(abi.encodePacked(_string2))){return true;}
         return false;
     }
 
@@ -77,8 +95,22 @@ library GameCreationManagerHelper{
         }
     }
 
+    function nextRound(Game storage _game) internal {
+        _game.currentRound++;
+        _game.isVotingRound = !_game.isVotingRound;
+
+        if(_game.currentRound == _game.numberOfRounds){
+            //game has finished
+            
+        }else{
+            if (!_game.isVotingRound) {
+                //apply the votes and update submissions from the previous voting round
+            }
+        }
+    }
+
     /* @dev remove submissions based on strategy */
-    function nextRound(Game storage _game) internal returns(uint numberOfRounds){
+    function submissions(Game storage _game) internal returns(uint numberOfRounds){
         if(_game.roundStrategy == RoundStrategy.none){
             uint loserCount = _game.players.length / _game.numberOfRounds;
 
