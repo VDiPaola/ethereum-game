@@ -32,6 +32,7 @@ library GameCreationManagerHelper{
         uint date;
         uint prizePool;
         uint8 difficulty;
+        uint16 entryPrice;
         bool isVotingRound;
         bool official;
         string[] challenges;

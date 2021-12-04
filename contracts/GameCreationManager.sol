@@ -18,6 +18,9 @@ contract GameCreationManager{
     Counters.Counter curGameId;
 
     event AddFunds(uint gameId, address funder, uint amount, uint timestamp);
+    event GameCreated();
+    event RefundedGame(uint gameId, uint timestamp);
+    event Refund(address player, uint amount, uint gameId, uint timestamp);
 
     //get game max
     function getGames(uint256 _difficulty) public view returns(uint256 amt){
@@ -74,44 +77,8 @@ contract GameCreationManager{
     uint8 difficulty, 
     uint256 numberOfRounds,
     uint256 numberOfWinners,
-    string[] memory challenges)
-    internal {
-        require(difficulty < 4 && difficulty > 0, 'invalid difficulty');
-        GameCreationManagerHelper.Game memory newGame = GameCreationManagerHelper.Game(
-            title,
-            GameCreationManagerHelper.RoundStrategy.none,
-            GameCreationManagerHelper.PrizeDistribution.topX,
-            games.length, //id
-            numberOfWinners,
-            maxPlayers,
-            minPlayers,
-            numberOfRounds,
-            submissionlengthHours,
-            votinglengthHours,
-            0, //current round
-            block.timestamp,
-            0, //prize pool
-            difficulty,
-            false, //isVotingRound
-            official,
-            challenges,
-            new address[](0), //players
-            msg.sender);
-        games.push(newGame);
-
-    }
-
-    function _createGame
-    (bool official,
-    string memory title,
-    uint256 maxPlayers, 
-    uint256 minPlayers,  
-    uint256 submissionlengthHours, 
-    uint256 votinglengthHours, 
-    uint8 difficulty, 
-    uint256 numberOfRounds,
-    uint256 numberOfWinners,
     string[] memory challenges,
+    uint16 entryPrice,
     GameCreationManagerHelper.RoundStrategy roundStrategy,
     GameCreationManagerHelper.PrizeDistribution prizeDistributionStrategy)
     internal {
@@ -119,8 +86,8 @@ contract GameCreationManager{
         curGameId.increment();
         GameCreationManagerHelper.Game memory newGame = GameCreationManagerHelper.Game(
             title,
-            roundStrategy,
-            prizeDistributionStrategy,
+            official ? roundStrategy : GameCreationManagerHelper.RoundStrategy.none,
+            official ? prizeDistributionStrategy : GameCreationManagerHelper.PrizeDistribution.topX,
             curGameId.current(),
             numberOfWinners,
             maxPlayers,
@@ -132,6 +99,7 @@ contract GameCreationManager{
             block.timestamp,
             0, //prize pool
             difficulty,
+            entryPrice,
             false, //isVotingRound
             official,
             challenges,
@@ -139,7 +107,9 @@ contract GameCreationManager{
             msg.sender);
         games.push(newGame);
 
+        emit GameCreated();
     }
+    
 
 
     // go to next round of game
@@ -170,6 +140,17 @@ contract GameCreationManager{
         GameCreationManagerHelper.Game storage game = GameCreationManagerHelper.getGame(_gameId, games);
         game.prizePool += msg.value;
         emit AddFunds(_gameId, msg.sender, msg.value, block.timestamp);
+    }
+
+
+    //refund players in a game
+    function _refund(uint256 _gameId) internal {
+        GameCreationManagerHelper.Game storage game = GameCreationManagerHelper.getGame(_gameId, games);
+        for (uint playerIndex = 0; playerIndex < game.players.length; playerIndex++) {
+            address payable addr = payable(game.players[playerIndex]);
+            addr.transfer(game.entryPrice);
+            emit Refund(addr, game.entryPrice, _gameId, block.timestamp);
+        }
     }
 
     /**
