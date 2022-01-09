@@ -18,9 +18,11 @@ contract GameCreationManager{
     Counters.Counter curGameId;
 
     event AddFunds(uint gameId, address funder, uint amount, uint timestamp);
-    event GameCreated();
+    event GameCreated(GameCreationManagerHelper.Game game);
+    event NextRound(uint gameId, uint currentRound, uint totalRound, bool votingRound);
     event RefundedGame(uint gameId, uint timestamp);
     event Refund(address player, uint amount, uint gameId, uint timestamp);
+    event AddChallenge(address gameMaster, uint gameId, string challenge);
 
     //get game max
     function getGames(uint256 _difficulty) public view returns(uint256 amt){
@@ -72,8 +74,9 @@ contract GameCreationManager{
     string memory title,
     uint256 maxPlayers, 
     uint256 minPlayers,  
-    uint256 submissionlengthHours, 
-    uint256 votinglengthHours, 
+    uint256 submissionLengthHours, 
+    uint256 votingLengthHours, 
+    uint256 entryLengthHours, 
     uint8 difficulty, 
     uint256 numberOfRounds,
     uint256 numberOfWinners,
@@ -82,7 +85,8 @@ contract GameCreationManager{
     GameCreationManagerHelper.RoundStrategy roundStrategy,
     GameCreationManagerHelper.PrizeDistribution prizeDistributionStrategy)
     internal {
-        require(difficulty < 4 && difficulty > 0, 'invalid difficulty');
+        require(difficulty < 4 && difficulty > 0, '_createGame: invalid difficulty');
+        require(official || challenges.length >= numberOfRounds, '_createGame: not enough challenges');
         curGameId.increment();
         GameCreationManagerHelper.Game memory newGame = GameCreationManagerHelper.Game(
             title,
@@ -93,8 +97,9 @@ contract GameCreationManager{
             maxPlayers,
             minPlayers,
             numberOfRounds,
-            submissionlengthHours,
-            votinglengthHours,
+            submissionLengthHours,
+            votingLengthHours,
+            entryLengthHours,
             0, //current round
             block.timestamp,
             0, //prize pool
@@ -107,7 +112,7 @@ contract GameCreationManager{
             msg.sender);
         games.push(newGame);
 
-        emit GameCreated();
+        emit GameCreated(newGame);
     }
     
 
@@ -134,6 +139,14 @@ contract GameCreationManager{
         game.players.push(_addr);
     }
 
+    //remove player, admin only
+    function _removePlayer(address _addr, uint256 _gameId) internal{
+        GameCreationManagerHelper.Game storage game = GameCreationManagerHelper.getGame(_gameId, games);
+        bool alreadyExists = GameCreationManagerHelper.inArray(_addr, game.players);
+        require(!alreadyExists, "_addPlayerSafe: address already exists in this game");
+        game.players.push(_addr);
+    }
+
     //adds to prize pool for game
     function _addFunds(uint256 _gameId) internal {
         require(msg.value >= 1, "_addFunds: minimum to add is $1");
@@ -151,14 +164,39 @@ contract GameCreationManager{
             addr.transfer(game.entryPrice);
             emit Refund(addr, game.entryPrice, _gameId, block.timestamp);
         }
+        GameCreationManagerHelper.deleteGame(_gameId, games);
+    }
+
+    //add challenge to challenge list
+    function _addChallenge(uint256 _gameId, string memory _challenge) internal {
+        GameCreationManagerHelper.Game storage game = GameCreationManagerHelper.getGame(_gameId, games);
+        game.challenges.push(_challenge);
+        emit AddChallenge(msg.sender, _gameId, _challenge);
+    }
+
+    //prompt game for start/next round
+    function _promptGame(uint _gameId) internal {
+        GameCreationManagerHelper.Game storage game = GameCreationManagerHelper.getGame(_gameId, games);
+        //check start game condition
+        if (game.currentRound == 0) {
+            if (GameCreationManagerHelper.canGameStart(game)){
+                //initialise game
+                GameCreationManagerHelper.gameInit(game);
+                //go to next round
+                GameCreationManagerHelper.nextRound(game);
+                emit NextRound(_gameId, game.currentRound, game.numberOfRounds, game.isVotingRound);
+            }
+        }else{
+            GameCreationManagerHelper.nextRound(game);
+            emit NextRound(_gameId, game.currentRound, game.numberOfRounds, game.isVotingRound);
+        }
     }
 
     /**
-        -single create game function that gets passed the individual arguments from other functions
-        -unofficial games require list of challenges before hand, top suggestion gets added on creation
-        -refund function
-        -singular game prompt
-        -all game propmt
+        -fill in game event parameters
+        -integrate gamesubmissiongateway into here instead
+        -hardcore games
+        -game end
      */
 
 }
