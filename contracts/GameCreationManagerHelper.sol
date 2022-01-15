@@ -32,12 +32,16 @@ library GameCreationManagerHelper{
         uint currentRound;
         uint date;
         uint prizePool;
+        uint totalPlayerCount;
         uint8 difficulty;
         uint16 entryPrice;
         bool isVotingRound;
         bool official;
+        bool voteOverride;
         string[] challenges;
         address[] players;
+        address[] leaderboard;
+        address[] surrenderVotes;
         address gameMaster;
     }
     
@@ -133,15 +137,29 @@ library GameCreationManagerHelper{
 
     /* @dev go to next round in game */
     function nextRound(Game storage _game) internal {
+        if (_game.isVotingRound) {
+            //voting round ending
+            //move losers to leaderboard
+            uint loserCount = getLoserCount(_game);
+            for (uint i = 0; i < loserCount; i++) {
+                //players with lowest votes on submission / no submission first move to leaderboard
+
+            }
+        }
+        
         _game.currentRound++;
         _game.isVotingRound = !_game.isVotingRound;
+        _game.voteOverride = false;
 
         if(_game.currentRound == _game.numberOfRounds){
             //game has finished
+            //fill in rest of leaderboard
+            //distribute prizes
             
         }else{
             if (!_game.isVotingRound) {
-                //apply the votes and update submissions from the previous voting round
+                //submission round starting
+                //reset surrender votes
             }
         }
     }
@@ -150,17 +168,20 @@ library GameCreationManagerHelper{
     function gameInit(Game storage _game) internal {
         require(_game.currentRound == 0, "gameInit: game already initialised");
         _game.numberOfRounds = calculateRounds(_game.roundStrategy, _game.numberOfRounds, _game.players.length);
+        _game.totalPlayerCount = _game.players.length;
         
     }
 
-    /* @dev remove submissions based on strategy */
-    function submissions(Game storage _game) internal returns(uint numberOfRounds){
+    /* @dev get amount of losers depending on strategy */
+    function getLoserCount(Game storage _game) internal view returns(uint loserCount){
         if(_game.roundStrategy == RoundStrategy.none){
-            uint loserCount = _game.players.length / _game.numberOfRounds;
+            //set number of losers each round
+            return _game.totalPlayerCount / _game.numberOfRounds;
 
         }
         else if(_game.roundStrategy == RoundStrategy.halfing){
-
+            //keeps halfing until player count is less than game.numberOfRounds
+            return _game.players.length / 2;
         }
     }
 }

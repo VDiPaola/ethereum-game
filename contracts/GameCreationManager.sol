@@ -103,12 +103,16 @@ contract GameCreationManager{
             0, //current round
             block.timestamp,
             0, //prize pool
+            0, // total player count
             difficulty,
             entryPrice,
             false, //isVotingRound
             official,
+            false, //voteOverride
             challenges,
             new address[](0), //players
+            new address[](0), //leaderboard
+            new address[](0), //surrender votes
             msg.sender);
         games.push(newGame);
 
