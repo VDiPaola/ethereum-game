@@ -55,6 +55,6 @@ contract TheGameHub is PaymentGateway, Token, Ownable, Pausable {
     }
 
     //GameSubmissionGateway
-
+    
     
 }

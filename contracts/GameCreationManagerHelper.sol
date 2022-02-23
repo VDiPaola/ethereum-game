@@ -164,6 +164,14 @@ library GameCreationManagerHelper{
         }
     }
 
+    /* @dev get next loser in list*/
+    function nextLoser(Game storage _game) internal returns(uint index){
+        for (uint i = 0; i < _game.players; i++) {
+                //players with lowest votes on submission / no submission first move to leaderboard
+
+            }
+    }
+
     /* @dev initialises the game*/
     function gameInit(Game storage _game) internal {
         require(_game.currentRound == 0, "gameInit: game already initialised");
